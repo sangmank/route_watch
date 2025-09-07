@@ -207,6 +207,22 @@ class MockAPI(TrafficAPI):
         route_waypoints = [start]
         if waypoints:
             route_waypoints.extend(waypoints)
+        else:
+            # For optimal route requests, generate some fake intermediate waypoints
+            # This is useful for testing the populate-free-flow functionality
+            if avoid_traffic and distance_km > 1:  # Generate waypoints for routes > 1km
+                # Generate 1-3 intermediate waypoints based on distance
+                num_points = min(3, max(1, int(distance_km / 2)))
+                for i in range(1, num_points + 1):
+                    ratio = i / (num_points + 1)
+                    intermediate_lat = start[0] + ratio * (end[0] - start[0])
+                    intermediate_lng = start[1] + ratio * (end[1] - start[1])
+                    # Add small random offset to simulate real route
+                    import random
+                    intermediate_lat += random.uniform(-0.001, 0.001)
+                    intermediate_lng += random.uniform(-0.001, 0.001)
+                    route_waypoints.append((intermediate_lat, intermediate_lng))
+        
         route_waypoints.append(end)
         
         return RouteResponse(
@@ -226,7 +242,16 @@ class MockAPI(TrafficAPI):
 
 def create_api_client(api_config: Dict[str, Any]) -> TrafficAPI:
     """Factory function to create the appropriate API client."""
-    provider = api_config.get("provider", "mock").lower()
+    provider = api_config.get("provider")
+    
+    # Warn if no provider is configured
+    if not provider:
+        import sys
+        print("Warning: No API provider configured. Using mock API for testing.", file=sys.stderr)
+        print("Add 'provider = \"mapbox\"' or 'provider = \"google\"' to your config file.", file=sys.stderr)
+        provider = "mock"
+    
+    provider = provider.lower()
     
     if provider == "mapbox":
         api_key = api_config.get("api_key") or os.getenv("MAPBOX_API_KEY")

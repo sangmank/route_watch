@@ -51,6 +51,12 @@ def check(config_file: Path, route: str, verbose: bool) -> None:
         config = Config.load_from_file(config_file)
         route_config = config.get_route(route)
         
+        # Check if using mock API and warn user
+        provider = config.api_config.get("provider", "").lower()
+        if verbose and (not provider or provider == "mock"):
+            click.echo("⚠️  Warning: Using mock API for testing.", err=True)
+            click.echo("   For real traffic data, configure 'provider = \"mapbox\"' or 'provider = \"google\"' in your config.", err=True)
+        
         monitor = RouteMonitor(config.api_config)
         notification_service = NotificationService(config.notification) if config.notification else None
         
@@ -115,6 +121,12 @@ def populate_free_flow(config_file: Path, route: str, save: bool) -> None:
     try:
         config = Config.load_from_file(config_file)
         route_config = config.get_route(route)
+        
+        # Check if using mock API and warn user
+        provider = config.api_config.get("provider", "").lower()
+        if not provider or provider == "mock":
+            click.echo("⚠️  Warning: Using mock API for testing. This will generate fake waypoints.", err=True)
+            click.echo("   For real routes, configure 'provider = \"mapbox\"' or 'provider = \"google\"' in your config.", err=True)
         
         monitor = RouteMonitor(config.api_config)
         
