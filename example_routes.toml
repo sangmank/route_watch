@@ -1,0 +1,45 @@
+# Example route_watch configuration file
+# Copy this file and customize it for your routes
+
+# API Configuration
+# Uncomment and configure one of the following:
+
+# For Mapbox (recommended)
+# provider = "mapbox"
+# api_key = "<MAPBOX_API_KEY>"  # Or set MAPBOX_API_KEY environment variable
+
+# For Google Maps  
+# provider = "google"
+# api_key = "<GOOGLE_MAPS_API_KEY>"  # Or set GOOGLE_MAPS_API_KEY environment variable
+
+# For testing (no API key required)
+provider = "mock"
+
+[route.morning_commute]
+name = "Morning Commute"
+start_latlong = [37.7749, -122.4194]  # San Francisco
+end_latlong = [37.7831, -122.4031]    # Downtown SF
+free_flow_route = [
+    [37.775, -122.42],
+    [37.78, -122.41]
+]
+congestion_threshold = 1.5
+
+[route.evening_commute]
+name = "Evening Commute"
+start_latlong = [37.7831, -122.4031]    # Downtown SF
+end_latlong = [37.7749, -122.4194]      # San Francisco
+free_flow_route = [
+    [37.78, -122.41],
+    [37.775, -122.42]
+]
+congestion_threshold = 1.3
+
+[notification]
+tool = "telegram_notifier"
+cli_args = [
+    "send",
+    "--token", "<TELEGRAM_BOT_TOKEN>",
+    "--chat-id", "<TELEGRAM_CHAT_ID>",
+    "--message", "_NOTIFICATION_MESSAGE_"
+]
