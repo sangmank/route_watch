@@ -93,6 +93,9 @@ class MapboxAPI(TrafficAPI):
         # Extract waypoints from geometry
         geometry = route["geometry"]["coordinates"]
         route_waypoints = [(lat, lng) for lng, lat in geometry]
+
+        if len(route_waypoints) > 23:  # 23 = 25 total - start - end
+            return await self._get_route_chunked(start, end, route_waypoints, avoid_traffic)
         
         return RouteResponse(
             travel_time_minutes=duration_seconds / 60,
