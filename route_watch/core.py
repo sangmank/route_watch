@@ -130,7 +130,17 @@ class RouteMonitor:
         waypoints = response.waypoints
         if len(waypoints) > 2:
             # Return waypoints excluding start and end
-            return waypoints[1:-1]
+            intermediate_waypoints = waypoints[1:-1]
+            
+            # Limit waypoints to a reasonable number for API efficiency
+            # Keep every nth waypoint to reduce total count while preserving route shape
+            max_waypoints = 20  # Conservative limit below Mapbox's 25
+            if len(intermediate_waypoints) > max_waypoints:
+                # Calculate step to downsample waypoints evenly
+                step = len(intermediate_waypoints) // max_waypoints
+                intermediate_waypoints = intermediate_waypoints[::step][:max_waypoints]
+            
+            return intermediate_waypoints
         else:
             # No intermediate waypoints
             return []

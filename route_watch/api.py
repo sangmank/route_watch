@@ -58,6 +58,10 @@ class MapboxAPI(TrafficAPI):
         """Get route from Mapbox Directions API."""
         profile = "driving-traffic" if not avoid_traffic else "driving"
         
+        # Handle waypoint chunking for Mapbox's 25-waypoint limit
+        if waypoints and len(waypoints) > 23:  # 23 = 25 total - start - end
+            return await self._get_route_chunked(start, end, waypoints, avoid_traffic)
+        
         # Format coordinates as lng,lat for Mapbox
         coords = [f"{start[1]},{start[0]}"]
         if waypoints:
@@ -95,6 +99,80 @@ class MapboxAPI(TrafficAPI):
             distance_km=distance_meters / 1000,
             waypoints=route_waypoints,
             route_geometry=str(route["geometry"])
+        )
+    
+    async def _get_route_chunked(
+        self,
+        start: Tuple[float, float],
+        end: Tuple[float, float],
+        waypoints: List[Tuple[float, float]],
+        avoid_traffic: bool = False
+    ) -> RouteResponse:
+        """Get route with waypoint chunking for Mapbox's 25-waypoint limit."""
+        profile = "driving-traffic" if not avoid_traffic else "driving"
+        
+        # Chunk waypoints into groups of 23 (25 total - start - end)
+        chunk_size = 23
+        chunks = [waypoints[i:i + chunk_size] for i in range(0, len(waypoints), chunk_size)]
+        
+        total_duration = 0
+        total_distance = 0
+        all_route_waypoints = []
+        
+        current_start = start
+        
+        for i, chunk in enumerate(chunks):
+            # For the last chunk, use the original end point
+            current_end = end if i == len(chunks) - 1 else chunk[-1]
+            current_waypoints = chunk if i == len(chunks) - 1 else chunk[:-1]
+            
+            # Format coordinates as lng,lat for Mapbox
+            coords = [f"{current_start[1]},{current_start[0]}"]
+            if current_waypoints:
+                coords.extend([f"{wp[1]},{wp[0]}" for wp in current_waypoints])
+            coords.append(f"{current_end[1]},{current_end[0]}")
+            
+            coordinates = ";".join(coords)
+            url = f"{self.base_url}/{profile}/{coordinates}"
+            
+            params = {
+                "access_token": self.api_key,
+                "geometries": "geojson",
+                "overview": "full",
+                "steps": "false"
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+                data = response.json()
+            
+            if not data.get("routes"):
+                raise ValueError(f"No routes found for chunk {i + 1}")
+            
+            route = data["routes"][0]
+            total_duration += route["duration"]
+            total_distance += route["distance"]
+            
+            # Extract waypoints from geometry
+            geometry = route["geometry"]["coordinates"]
+            chunk_waypoints = [(lat, lng) for lng, lat in geometry]
+            
+            # Avoid duplicating waypoints between chunks
+            if i > 0 and all_route_waypoints and chunk_waypoints:
+                # Remove first waypoint of current chunk as it's the same as last of previous
+                chunk_waypoints = chunk_waypoints[1:]
+            
+            all_route_waypoints.extend(chunk_waypoints)
+            
+            # Set start for next chunk
+            current_start = current_end
+        
+        return RouteResponse(
+            travel_time_minutes=total_duration / 60,
+            distance_km=total_distance / 1000,
+            waypoints=all_route_waypoints,
+            route_geometry=None  # Can't combine geometries easily
         )
     
     async def get_optimal_route(

@@ -146,8 +146,17 @@ def populate_free_flow(config_file: Path, route: str, save: bool) -> None:
         click.echo(f"✅ Found optimal route with {len(waypoints)} waypoints")
         
         if save:
-            config.save_to_file(config_file)
-            click.echo(f"💾 Configuration saved to {config_file}")
+            # Ask for user confirmation before updating config file
+            if len(waypoints) > 0:
+                click.echo(f"\nThis will update the '{route}' route configuration with {len(waypoints)} waypoints.")
+                if click.confirm("Do you want to update the config file?", default=True):
+                    config.save_to_file(config_file)
+                    click.echo(f"💾 Configuration saved to {config_file}")
+                else:
+                    click.echo("Configuration not saved.")
+                    click.echo(f"Free-flow waypoints: {waypoints}")
+            else:
+                click.echo("No waypoints found to save.")
         else:
             click.echo("Use --save flag to save the configuration")
             click.echo(f"Free-flow waypoints: {waypoints}")
