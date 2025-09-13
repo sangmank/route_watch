@@ -240,6 +240,41 @@ def watch(config_file: Path, route: Optional[str], interval: int, verbose: bool)
         sys.exit(1)
 
 
+@cli.command('test-notification')
+@click.option(
+    '--config-file', '-c',
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help='Path to configuration file (TOML, YAML, or JSON)'
+)
+def test_notification(config_file: Path) -> None:
+    """Test the notification system with a sample message."""
+    load_dotenv()
+    
+    try:
+        config = Config.load_from_file(config_file)
+        
+        if not config.notification:
+            click.echo("❌ No notification configuration found in config file", err=True)
+            click.echo("Add a [notification] section to your configuration to test notifications.", err=True)
+            sys.exit(1)
+        
+        notification_service = NotificationService(config.notification)
+        
+        click.echo("Testing notification system...")
+        success = notification_service.test_notification()
+        
+        if success:
+            click.echo("✅ Test notification sent successfully!")
+        else:
+            click.echo("❌ Failed to send test notification", err=True)
+            sys.exit(1)
+            
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+
+
 @cli.command()
 def version() -> None:
     """Show version information."""
